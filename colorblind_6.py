@@ -1,0 +1,369 @@
+from ast import arg
+from turtle import back, circle
+import cv2 as cv
+import pyautogui as gui
+import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image, ImageGrab
+import pyscreenshot as ImageGrab
+import mouse
+import time
+import sys
+
+#region Variables
+
+circleAmounts = [4, 9, 16, 25, 36] # amount of circles
+levelAmounts = [4, 15, 15, 15, 25] # iterations
+
+stage2x2 = [(250,250), (550,250),
+            (250,550), (550,550)]
+
+stage3x3 = [(200,200), (400,200), (600,200),
+            (200,400), (400,400), (600,400),
+            (200,600), (400,600), (600,600)]
+
+stage4x4 = [(180,200), (325,200), (465,200), (600,200),
+            (180,335), (325,335), (465,335), (600,335),
+            (180,480), (325,480), (465,480), (600,480),
+            (180,620), (325,620), (465,620), (600,620)]
+
+stage5x5 = [(140,155), (265,155), (395,155), (520,155), (650,155), 
+            (140,280), (265,280), (395,280), (520,280), (650,280), 
+            (140,410), (265,410), (395,410), (520,410), (650,410), 
+            (140,535), (265,535), (395,535), (520,535), (650,535), 
+            (140,660), (265,660), (395,660), (520,660), (650,660)]
+
+stage6x6 = [(147,165), (245,165), (345,165), (445,165), (540,165), (640,165), 
+            (147,265), (245,265), (345,265), (445,265), (540,265), (640,265), 
+            (147,360), (245,360), (345,360), (445,360), (540,360), (640,360), 
+            (147,455), (245,455), (345,455), (445,455), (540,455), (640,455), 
+            (147,555), (245,555), (345,555), (445,555), (540,555), (640,555), 
+            (147,655), (245,655), (345,655), (445,655), (540,655), (640,655)]
+
+stages = [stage2x2, stage3x3, stage4x4, stage5x5, stage6x6]
+
+#endregion
+
+def grabImage(upper_x, upper_y, lower_x, lower_y):
+    image = ImageGrab.grab(bbox=(upper_x,upper_y,lower_x,lower_y)) #top_x,top_y, bot_x, bot_y
+    image.save('Photos/screenshot.png') 
+
+def clickMouse(index, level, clickTF):
+    offset = (4280,320)
+    mouse.move(stages[level][index][0] + offset[0], stages[level][index][1] + offset[1])
+    time.sleep(1)
+    if clickTF:
+        mouse.click('left') 
+
+def checkForBlack(baseColor):
+    varx = 30
+    varB = 75
+    varW = 200
+    if (baseColor[1] < varx and baseColor[2] < varx):
+        return True
+    if (baseColor[0] < varB):
+        return True
+    if (baseColor[0] > varW and baseColor[1] > varW and baseColor[2] > varW):
+        return True
+    return False
+
+def convertBGR(showImage, level):
+    img = cv.imread('Photos/screenshot.png')
+    bgr = cv.cvtColor(img, cv.COLOR_HSV2BGR)
+    cv.imwrite('Photos/screenshot_bgr.png', bgr)
+
+    baseColor = bgr[stages[level][0][1],stages[level][0][0]] # y, x
+    
+    if checkForBlack(baseColor):
+        bgr = convertHLS(img)
+
+    if showImage:
+        cv.imshow("bgr", bgr) #to debug see the image
+        cv.waitKey(2)
+    return bgr
+
+def convertHLS(img):
+    bgr = img[:,:,0:3] # 75 hue, 65 saturation helps 
+
+    hsv = cv.cvtColor(bgr, cv.COLOR_BGR2HSV)
+    h,s,v = cv.split(hsv)
+
+    purple = 200 # 0 to 360
+    green = 60 # 0 to 360
+
+    diff_color = green - purple
+
+    hnew = np.mod(h + diff_color, 180).astype(np.uint8)
+
+    hsv_new = cv.merge([hnew,s,v])
+
+    bgr_new = cv.cvtColor(hsv_new, cv.COLOR_HSV2BGR)
+
+    cv.imwrite('Photos/screenshot_bgr_new.png', bgr_new)
+
+    return bgr_new
+
+# Prints
+def printCircles(bgr, level):
+    for i in range(circleAmounts[level]):
+        px = bgr[stages[level][i][1],stages[level][i][0]] # y, x
+        print(i, ": ", px)
+    print()
+
+def printData(data):
+    if (len(data) >= 1):
+        for i in range(len(data)):
+            print(data[i])
+    print()
+
+def printLeftOverData(data):
+    if (len(data) > 0):
+        for i in range(len(data)):
+            print(data[i])
+    print()
+
+def deleteDuplicates(data):
+    average = [0,0,0]
+    counter = 0
+    for i in range(len(data) - 1,-1, -1):
+        if (data[i][1] == True):
+            #print(data[i][3])
+            for x in range(data[i][3]):
+                average[0] += data[i][0][0]
+                average[1] += data[i][0][1]
+                average[2] += data[i][0][2]
+                counter += 1
+            data.pop(i)
+    print()
+
+    if (counter > 0):
+        average[0] = average[0] / counter
+        average[1] = average[1] / counter
+        average[2] = average[2] / counter
+    # add counter to true false, etc... so i can get an accurate average
+    print('---average''')
+    print(average)
+
+    return average
+
+def setMinMax(bgr, level):
+    maxRGB = [1,1,1]
+    secondMaxRGB = [0,0,0]
+    minRGB = [254,254,254]
+    secondMinRGB = [255,255,255]
+
+    for i in range(circleAmounts[level]):
+        color1 = bgr[stages[level][i][1],stages[level][i][0]] # y, x
+        for z in range(3):
+            if (color1[z] > secondMaxRGB[z] and color1[z] != maxRGB[z]):
+                if (color1[z] > maxRGB[z]):
+                    secondMaxRGB[z] = maxRGB[z]
+                    maxRGB[z] = color1[z]
+                else:
+                    secondMaxRGB[z] = color1[z]
+            if (color1[z] < secondMinRGB[z] and color1[z] != minRGB[z]):
+                if (color1[z] < minRGB[z]):
+                    secondMinRGB[z] = minRGB[z]
+                    minRGB[z] = color1[z]
+                else:
+                    secondMinRGB[z] = color1[z]
+
+    return (maxRGB, secondMaxRGB, minRGB, secondMinRGB)
+
+def setData(bgr, level, var):
+    data = []
+    foundDuplicate = False
+    recurse = True
+    maxRGB, secondMaxRGB, minRGB, secondMinRGB = setMinMax(bgr, level)
+    #TODO: use different sorting algorithmn? Sorted array?
+    #TODO: Organize functions... make into an OOP so i dont have to transfer data everywhere
+    printCircles(bgr,level)
+
+    for i in range(circleAmounts[level]):
+        color1 = bgr[stages[level][i][1],stages[level][i][0]] # y, x
+
+        for x in range(len(data)):
+            # if duplicate in array, set it to true
+            if ((color1[0] < data[x][0][0] + var) and (color1[0] > data[x][0][0] - var) and 
+                (color1[1] < data[x][0][1] + var) and (color1[1] > data[x][0][1] - var) and
+                (color1[2] < data[x][0][2] + var) and (color1[2] > data[x][0][2] - var)):
+                data[x][1] = True
+                data[x][3] += 1
+                foundDuplicate = True
+                break
+        
+        if (foundDuplicate == False):
+            data.append([color1, False, i, 1, 0])
+        else:
+            foundDuplicate = False
+
+    for i in range(len(data)):
+        if data[i][1] == False and recurse == True:
+            recurse = False
+
+    # if all data true re-run setData with lower variance
+    if recurse == True:
+        print("---all data true, recurse")
+        var -= 3
+        return setData(bgr,level, var)
+    else:
+        print("---- all data -----")
+        printData(data)
+
+        backup = deleteDuplicates(data)
+
+        print('maxRGB: ', maxRGB, 'secondMaxRGB: ', secondMaxRGB)
+        print('minRGB: ', minRGB, 'secondMinRGB: ', secondMinRGB)
+
+        for i in range(len(data)):
+            for x in range(3):
+                if (data[i][0][x] == maxRGB[x]):
+                    temp = maxRGB[x] - secondMaxRGB[x]
+                    #print(i, " : ", x, ": ", temp)
+                    if temp > data[i][4]:
+                        data[i][4] = temp
+                if (data[i][0][x] == minRGB[x]):
+                    temp = secondMinRGB[x] - minRGB[x]
+                    #print(i, " : ", x, ": ", temp)
+                    if temp > data[i][4]:
+                        data[i][4] = temp
+
+        print("---- left over data -----")
+        printLeftOverData(data)
+
+        return (data, backup)
+
+
+def computeSubVariance(data, i, baseColor):
+    return  (   abs(int(data[i][0][0]) - int(baseColor[0])) \
+            +   abs(int(data[i][0][1]) - int(baseColor[1])) \
+            +   abs(int(data[i][0][2]) - int(baseColor[2])) )
+
+def compareFirstThreeUseThree(bgr, data, level):
+    maxSameVariance = 30
+    baseColor1 = bgr[stages[level][0][1],stages[level][0][0]] # y, x
+
+    var1v2 = computeSubVariance(data, 1, baseColor1)
+    var1v3 = computeSubVariance(data, 2, baseColor1)
+
+    if (var1v2 + var1v3 > maxSameVariance): # 2 mis match use # 3
+        return True
+    return False
+
+def compareMaxVariance(bgr, data, level, backup): 
+    
+    baseColor = bgr[stages[level][0][1],stages[level][0][0]] # y, x
+    if backup[0] != 0 or backup[1] != 0 or backup[2] != 0:
+        print("ran back up")
+        baseColor = backup
+    # should never run now as recurse for true only data
+    else: # if == 0 then no true valus in data use second backup element # 3
+        print("ran back up 2")
+        if compareFirstThreeUseThree(bgr, data, level):
+            baseColor = bgr[stages[level][2][1],stages[level][2][0]] # y, x
+
+    singleMaxVarMinimum = 2
+    maxVariance = 0
+    singleMaxVariance = 0
+    index = 0
+    singleIndex = 0
+
+    for i in range(len(data)):
+        if data[i][4] > singleMaxVariance:
+            singleMaxVariance = data[i][4]
+            singleIndex = data[i][2]
+        subVariance = computeSubVariance(data, i, baseColor)
+
+        print(subVariance)
+        if (subVariance > maxVariance):
+            maxVariance = subVariance
+            index = data[i][2]
+
+    #TODO: select all if not on next level yet
+    #TODO: make screenshot and check for white pixel in the left side of the circle
+    #TODO: if not then not next level pop data and select next one
+
+    print('max:', maxVariance, "   singleMax: ", singleMaxVariance)
+    print('index: ', index, 'singleVar: ', singleIndex)
+    if (singleIndex != index and singleMaxVariance > singleMaxVarMinimum):
+        print("single index chosen:", singleIndex, "other index:", index)
+        return singleIndex
+    else:
+        print("index chosen:", index, "single index:", singleIndex)
+        return index
+
+def findMisMatch(bgr, level):
+    var = 3
+    data, backup = setData(bgr,level, var)
+    index = compareMaxVariance(bgr, data, level, backup)
+    return index
+
+def runGame():
+    for j in range(len(stages)):
+        for i in range(levelAmounts[j]):
+            grabImage(4300,325,5100,1125) # 800, 800
+            bgr = convertBGR(False, j)
+            index = findMisMatch(bgr,j)
+            clickMouse(index, j, True)
+            time.sleep(1) # between rounds    
+
+if __name__ == "__main__":
+    if len(sys.argv) == 3:
+        if(sys.argv[1] == "l"):
+            i = int(sys.argv[2]) - 2
+            for j in range(levelAmounts[i]):
+                grabImage(4300,325,5100,1125) # 800, 800
+                bgr = convertBGR(False, i)
+                index = findMisMatch(bgr,i)
+                print(index)
+                clickMouse(index, i, True)
+                
+                time.sleep(1.25) # between rounds   
+
+        elif(sys.argv[1] == "p"):
+            grabImage(4300,325,5100,1125) # 800, 800
+            i = int(sys.argv[2]) - 2
+            # print(i)
+            bgr = convertBGR(True, i)
+            index = findMisMatch(bgr,i)
+            print(index)
+            clickMouse(index, i, False)
+            #TODO: put click mouse into findMisMatch and check for white circle on left
+
+        elif(sys.argv[1] == "s"):
+            grabImage(4300,325,5100,1125) # 800, 800
+            print('screenshot')
+
+        else:
+            print('use arguments:\nl2   \np2   \nss')
+
+    else:
+        runGame()
+
+
+
+#region cvtColor
+#BGR to Grayscale
+# gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+# cv.imshow("Gray", gray)
+
+#BGR to HSV
+# hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+# cv.imshow("HSV", hsv)
+
+# #BGR to RGB
+# rgb = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+# cv.imshow("RGB", rgb)
+
+#BGR to hls
+# hls = cv.cvtColor(img, cv.COLOR_BGR2HLS)
+# cv.imshow("GB", hls)
+
+# #BGR to LAb
+# lab = cv.cvtColor(img, cv.COLOR_BGR2LAB)
+# cv.imshow("LAB", lab)
+
+
+# https://www.youtube.com/watch?v=oXlwWbU8l2o
+# time 1:23:25 for color channel splitting may work bettwe than 
+#endregion

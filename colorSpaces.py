@@ -19,24 +19,33 @@ class colorSpaces:
         self.name = name
         self.debugging = debugging
         self.data = NULL
-        self.imgDefault = cv.imread(self._ssDefault + self._ssExtention)
-        self.image = self.grabScreenShot()
         self.colorSpace = NULL
-
-        self.saveScreenShot()
-
+        
         if name == 'bgr':
             self.colorSpace = self.convertBGR()
-        else:
+        elif name == 'hsv':
             self.colorSpace = self.convertHSV()
+        else:
+            self.colorSpace = cv.imread(self._ssDefault + self._ssExtention)
 
+    #TODO: Delete as never used???
     def grabScreenShot(self):
-        return ImageGrab.grab(bbox=(self._ssRegion[0], 
+        img = ImageGrab.grab(bbox=(self._ssRegion[0], 
                 self._ssRegion[1], self._ssRegion[2], self._ssRegion[3])) #top_x,top_y, bot_x, bot_y
-
-    def saveScreenShot(self):
-        self.image.save(self._ssDefault + self._ssExtention) 
+        img.save(self._ssDefault + self._ssExtention)
+        return img
+    # def saveScreenShot(self):
+    #     self.image.save(self._ssDefault + self._ssExtention) 
     
+    # Pre-requirement: new screenshot must be taken before set can be called
+    def setColorSpace(self):
+        if name == 'bgr':
+            self.colorSpace = self.convertBGR()
+        elif name == 'hsv':
+            self.colorSpace = self.convertHSV()
+        else:
+            self.colorSpace = cv.imread(self._ssDefault + self._ssExtention)
+
     def convertBGR(self):
         img = cv.imread(self._ssDefault + self._ssExtention)
         colorSpace = cv.cvtColor(img, cv.COLOR_HSV2BGR)

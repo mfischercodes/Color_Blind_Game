@@ -14,11 +14,24 @@ import time
 import sys
 from colorSpaces import colorSpaces
 
+#TODO: refactor
+#TODO: make color Object of just plain BGR and compare to that one too
+#TODO: make a main program instead of having main run in init 
+#       so I can loop for next level
+#TODO: set data, etc in ColorSpaces
+#TODO: do bgr2hsv color space?
+# colorSpace = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+#TODO: compare all color modes and find most common matching one?
+#TODO: Make some color modes selection null if it is close to black or white
+
 class colorBlindAI:
     clickDelay = 1
     level = 0
     clickIndex = 0
+    _ssDefault = 'Photos/screenshot'
+    _ssExtention = '.png'
     
+    _ssRegion = (4300,325,5100,1125) # screen shot region upper_x, upper_y, lower_x, lower_y
     _circleAmounts = [4, 9, 16, 25, 36] # amount of circles per level
     _levelAmounts = [4, 15, 15, 15, 25] # amount of levels with same grid pattern
     _mouseClickOffset = (4280,320)
@@ -49,16 +62,44 @@ class colorBlindAI:
     _stages = [_stage2x2, _stage3x3, _stage4x4, _stage5x5, _stage6x6]
 
     def __init__(self, debugging = False):
+        self.image = self.grabScreenShot()
         self.debugging = debugging
+        self.rgb = colorSpaces('rgb')
         self.bgr = colorSpaces('bgr')
         self.hsv = colorSpaces('hsv')
         
         if self.debugging:
+            print(self.rgb.name)
+            self.printCirclesRGB(self.rgb.colorSpace)
+
             print(self.bgr.name)
             self.printCirclesRGB(self.bgr.colorSpace)
 
             print(self.hsv.name)
             self.printCirclesRGB(self.hsv.colorSpace)
+
+    def nextLevel(self):
+        self.image = self.grabScreenShot()
+        
+        self.rgb = colorSpaces('rgb')
+        self.bgr = colorSpaces('bgr')
+        self.hsv = colorSpaces('hsv')
+        
+        if self.debugging:
+            print(self.rgb.name)
+            self.printCirclesRGB(self.rgb.colorSpace)
+
+            print(self.bgr.name)
+            self.printCirclesRGB(self.bgr.colorSpace)
+
+            print(self.hsv.name)
+            self.printCirclesRGB(self.hsv.colorSpace)
+
+    def grabScreenShot(self):
+        img = ImageGrab.grab(bbox=(self._ssRegion[0], 
+                self._ssRegion[1], self._ssRegion[2], self._ssRegion[3])) #top_x,top_y, bot_x, bot_y
+        img.save(self._ssDefault + self._ssExtention)
+        return img
 
     # Prints
     def printCirclesRGB(self, colorSpace):

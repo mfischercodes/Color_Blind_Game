@@ -62,21 +62,11 @@ class colorBlindAI:
     _stages = [_stage2x2, _stage3x3, _stage4x4, _stage5x5, _stage6x6]
 
     def __init__(self, debugging = False):
-        self.image = self.grabScreenShot()
         self.debugging = debugging
-        self.rgb = colorSpaces('rgb')
-        self.bgr = colorSpaces('bgr')
-        self.hsv = colorSpaces('hsv')
-        
-        if self.debugging:
-            print(self.rgb.name)
-            self.printCirclesRGB(self.rgb.colorSpace)
-
-            print(self.bgr.name)
-            self.printCirclesRGB(self.bgr.colorSpace)
-
-            print(self.hsv.name)
-            self.printCirclesRGB(self.hsv.colorSpace)
+        self.image = NULL
+        self.rgb = NULL
+        self.bgr = NULL
+        self.hsv = NULL
 
     def nextLevel(self):
         self.image = self.grabScreenShot()
@@ -86,28 +76,15 @@ class colorBlindAI:
         self.hsv = colorSpaces('hsv')
         
         if self.debugging:
-            print(self.rgb.name)
-            self.printCirclesRGB(self.rgb.colorSpace)
-
-            print(self.bgr.name)
-            self.printCirclesRGB(self.bgr.colorSpace)
-
-            print(self.hsv.name)
-            self.printCirclesRGB(self.hsv.colorSpace)
+            self.rgb.printCirclesRGB(self.level)
+            self.bgr.printCirclesRGB(self.level)
+            self.hsv.printCirclesRGB(self.level)
 
     def grabScreenShot(self):
         img = ImageGrab.grab(bbox=(self._ssRegion[0], 
                 self._ssRegion[1], self._ssRegion[2], self._ssRegion[3])) #top_x,top_y, bot_x, bot_y
         img.save(self._ssDefault + self._ssExtention)
         return img
-
-    # Prints
-    def printCirclesRGB(self, colorSpace):
-        for i in range(self._circleAmounts[self.level]):
-            px = colorSpace[self._stages[self.level][i][1],self._stages[self.level][i][0]] # y, x
-            print(i, ": ", px)
-        print()
-
 
     def ClickMouse(self):
         mouse.move(self._stages[self.currentLevel][self.clickIndex][0] + self._mouseClickOffset[0], 
@@ -328,6 +305,8 @@ if __name__ == "__main__":
 
         elif(sys.argv[1] == "p"):
             cb = colorBlindAI(True)
+            cb.nextLevel()
+            cb.bgr.setData(cb.level)
             # cb.printCirclesRGB()
             
             # grabImage(4300,325,5100,1125) # 800, 800

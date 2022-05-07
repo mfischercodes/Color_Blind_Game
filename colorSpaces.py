@@ -3,6 +3,7 @@ from asyncio.windows_events import NULL
 from fileinput import filename
 from turtle import back, circle, color
 from unicodedata import name
+from colorblind_6 import deleteDuplicates, setMinMax
 import cv2 as cv
 import pyautogui as gui
 import numpy as np
@@ -44,6 +45,9 @@ class colorSpaces:
         self.name = name
         self.debugging = debugging
         self.data = []
+        self.average = [0,0,0]
+        self.maxRGB = [[1,1,1],[0,0,0]]
+        self.minRGB = [[254,254,254],[255,255,255]]
         self.colorSpace = NULL
         
         if name == 'bgr':
@@ -61,6 +65,71 @@ class colorSpaces:
             self.colorSpace = self.convertHSV()
         else:
             self.colorSpace = cv.imread(self._ssDefault + self._ssExtention)
+
+    def setData(self, level):
+        foundDuplicate = False
+        var = 5
+        recurse = True
+        #maxRGB, secondMaxRGB, minRGB, secondMinRGB = setMinMax(bgr, level)
+
+        #TODO: remove variance or only have it be 1 or 2..?
+
+        # go through all circles and put into data... 
+        for i in range(self._circleAmounts[level]):
+            tempColor = self.colorSpace[self._stages[level][i][1], self._stages[level][i][0]] # y,x
+            # compare each element to those in data and if duplicate with another set duplicate to true
+            for x in range(len(self.data)):
+                if self.duplicateFound(tempColor, x, var):
+                    foundDuplicate = True
+                    recurse = False
+                    break
+            
+            if (foundDuplicate == False):
+                # color, duplicate T/F, index, amount, singleVariance
+                self.data.append([tempColor, False, i ,1 ,0]) 
+            else:
+                foundDuplicate = False
+            
+            # self.setMinMaxRGB()
+
+        if recurse:
+            var -= 3
+            self.setData(level)
+
+
+    #TODO: re-write the function using maxRGB, min RGB defined above as max / second [[,,],[,,]]
+    # setMinMax used in set data
+    def setMinMaxRGB(self):
+        maxRGB = [1,1,1]
+        secondMaxRGB = [0,0,0]
+        minRGB = [254,254,254]
+        secondMinRGB = [255,255,255]
+
+        for i in range(circleAmounts[level]):
+            color1 = bgr[stages[level][i][1],stages[level][i][0]] # y, x
+            for z in range(3):
+                if (color1[z] > secondMaxRGB[z] and color1[z] != maxRGB[z]):
+                    if (color1[z] > maxRGB[z]):
+                        secondMaxRGB[z] = maxRGB[z]
+                        maxRGB[z] = color1[z]
+                    else:
+                        secondMaxRGB[z] = color1[z]
+                if (color1[z] < secondMinRGB[z] and color1[z] != minRGB[z]):
+                    if (color1[z] < minRGB[z]):
+                        secondMinRGB[z] = minRGB[z]
+                        minRGB[z] = color1[z]
+                    else:
+                        secondMinRGB[z] = color1[z]
+
+        return (maxRGB, secondMaxRGB, minRGB, secondMinRGB)
+
+    def duplicateFound(self, tempColor, x, var):
+        if ((tempColor[0] < self.data[x][0][0] + var) and (tempColor[0] > self.data[x][0][0] - var) and 
+            (tempColor[1] < self.data[x][0][1] + var) and (tempColor[1] > self.data[x][0][1] - var) and
+            (tempColor[2] < self.data[x][0][2] + var) and (tempColor[2] > self.data[x][0][2] - var)):
+            self.data[x][1] = True
+            self.data[x][3] += 1 # counter of number of duplicate elements
+            return True
 
     def convertBGR(self):
         img = cv.imread(self._ssDefault + self._ssExtention)
@@ -105,74 +174,35 @@ class colorSpaces:
             print(i, ": ", px)
         print()
 
-    #TODO: re-write the function, make local variables
-    def setMinMax(self, level):
-        maxRGB = [1,1,1]
-        secondMaxRGB = [0,0,0]
-        minRGB = [254,254,254]
-        secondMinRGB = [255,255,255]
+    def printData(self):
+        print(self.name)
+        for i in range(len(self.data)):
+            print(self.data[i])
+        print()
 
-        for i in range(circleAmounts[level]):
-            color1 = bgr[stages[level][i][1],stages[level][i][0]] # y, x
-            for z in range(3):
-                if (color1[z] > secondMaxRGB[z] and color1[z] != maxRGB[z]):
-                    if (color1[z] > maxRGB[z]):
-                        secondMaxRGB[z] = maxRGB[z]
-                        maxRGB[z] = color1[z]
-                    else:
-                        secondMaxRGB[z] = color1[z]
-                if (color1[z] < secondMinRGB[z] and color1[z] != minRGB[z]):
-                    if (color1[z] < minRGB[z]):
-                        secondMinRGB[z] = minRGB[z]
-                        minRGB[z] = color1[z]
-                    else:
-                        secondMinRGB[z] = color1[z]
+    # Post-condition: average is set based off of rgb of all values
+    #                 duplicat data elements set to True are removed
+    def deleteDuplicatesAndComputeAverageOfDuplicates(self):
+        avg = [0,0,0]
+        counter = 0
+        for i in range(len(self.data) - 1,-1, -1):
+            if (self.data[i][1] == True):
+                for x in range(self.data[i][3]):
+                    avg[0] += self.data[i][0][0]
+                    avg[1] += self.data[i][0][1]
+                    avg[2] += self.data[i][0][2]
+                    counter += 1
+                self.data.pop(i)
 
-        return (maxRGB, secondMaxRGB, minRGB, secondMinRGB)
+        avg[0] = round(avg[0] / counter)
+        avg[1] = round(avg[1] / counter)
+        avg[2] = round(avg[2] / counter)
 
-    def duplicateFound(self, tempColor, x, var):
-        if ((tempColor[0] < self.data[x][0][0] + var) and (tempColor[0] > self.data[x][0][0] - var) and 
-            (tempColor[1] < self.data[x][0][1] + var) and (tempColor[1] > self.data[x][0][1] - var) and
-            (tempColor[2] < self.data[x][0][2] + var) and (tempColor[2] > self.data[x][0][2] - var)):
-            self.data[x][1] = True
-            self.data[x][3] += 1 # counter of number of duplicate elements
-            return True
-
-    def setData(self, level):
-        foundDuplicate = False
-        var = 5
-        recurse = True
-        #maxRGB, secondMaxRGB, minRGB, secondMinRGB = setMinMax(bgr, level)
-
-        #TODO: remove variance or only have it be 1 or 2..?
-
-        # go through all circles and put into data... 
-        for i in range(self._circleAmounts[level]):
-            tempColor = self.colorSpace[self._stages[level][i][1], self._stages[level][i][0]] # y,x
-            # compare each element to those in data and if duplicate with another set duplicate to true
-            for x in range(len(self.data)):
-                if self.duplicateFound(tempColor, x, var):
-                    foundDuplicate = True
-                    recurse = False
-                    break
-            
-            if (foundDuplicate == False):
-                # color, duplicate T/F, index, amount, singleVariance
-                self.data.append([tempColor, False, i ,1 ,0]) 
-            else:
-                foundDuplicate = False
-
-        if recurse:
-            var -= 3
-            self.setData(level)
+        self.average = avg
 
     #TODO: implement this function
-    def printAllData(self):
+    def setSingleVariance(self):
         
-        print("---- all data -----")
-        printData(data)
-
-        backup = deleteDuplicates(data)
 
         print('maxRGB: ', maxRGB, 'secondMaxRGB: ', secondMaxRGB)
         print('minRGB: ', minRGB, 'secondMinRGB: ', secondMinRGB)

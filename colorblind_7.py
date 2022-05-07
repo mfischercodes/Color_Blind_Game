@@ -67,24 +67,57 @@ class colorBlindAI:
         self.rgb = NULL
         self.bgr = NULL
         self.hsv = NULL
-
-    def nextLevel(self):
-        self.image = self.grabScreenShot()
         
-        self.rgb = colorSpaces('rgb')
-        self.bgr = colorSpaces('bgr')
-        self.hsv = colorSpaces('hsv')
-        
+    # Description: prints the rgb values of all 3 ColorSpace objects circles
+    def printCircles(self):
         if self.debugging:
             self.rgb.printCirclesRGB(self.level)
             self.bgr.printCirclesRGB(self.level)
             self.hsv.printCirclesRGB(self.level)
 
-    def grabScreenShot(self):
-        img = ImageGrab.grab(bbox=(self._ssRegion[0], 
+    # Description: Grabs a screenshot from the given coordinates in _ssRegion
+    # Post-condition: sets self.image
+    def setImage(self):
+        self.image = ImageGrab.grab(bbox=(self._ssRegion[0], 
                 self._ssRegion[1], self._ssRegion[2], self._ssRegion[3])) #top_x,top_y, bot_x, bot_y
-        img.save(self._ssDefault + self._ssExtention)
-        return img
+        self.image.save(self._ssDefault + self._ssExtention)
+
+    # Description: set 3 ColorSpace objects with different color modes
+    def setColorSpaces(self):
+        self.rgb = colorSpaces('rgb')
+        self.bgr = colorSpaces('bgr')
+        self.hsv = colorSpaces('hsv')
+
+    # Description: adds to obj.data [rgb color, duplicate T/F, index, amount, max variance]
+    # Post-condition: ColorSpaces objects.data is set t
+    def setData(self):
+        self.rgb.setData(self.level)
+        self.bgr.setData(self.level)
+        self.hsv.setData(self.level)
+
+        if self.debugging:
+            self.rgb.printData()
+            self.bgr.printData()
+            self.hsv.printData()
+
+    # Description: computes the average of all the true obj.data and deletes duplicates
+    # Post-condition: removes all duplicates from ColorSpaces obj.data
+    #                 sets obj.average 
+    def removeDuplicatesAndComputeAverageOfDuplicates(self):
+        self.rgb.deleteDuplicatesAndComputeAverageOfDuplicates()
+        self.bgr.deleteDuplicatesAndComputeAverageOfDuplicates()
+        self.hsv.deleteDuplicatesAndComputeAverageOfDuplicates()
+
+    # Description: grabs, screenshot, sets 3 color objects, cleans data, finds mismatch
+    def nextLevel(self):
+        self.setImage()
+        self.setColorSpaces()
+        self.printCircles()
+        self.setData()
+        self.removeDuplicatesAndComputeAverageOfDuplicates()
+
+        # average is used for comparing max variance from all rgb values
+        # min, max rgb used for comparing single max variance across all rgb values
 
     def ClickMouse(self):
         mouse.move(self._stages[self.currentLevel][self.clickIndex][0] + self._mouseClickOffset[0], 
@@ -92,43 +125,6 @@ class colorBlindAI:
         time.sleep(self.clickDelay)
         if not self.debugging:
             mouse.click('left')
-
-# Prints
-def printData(data):
-    if (len(data) >= 1):
-        for i in range(len(data)):
-            print(data[i])
-    print()
-
-def printLeftOverData(data):
-    if (len(data) > 0):
-        for i in range(len(data)):
-            print(data[i])
-    print()
-
-def deleteDuplicates(data):
-    average = [0,0,0]
-    counter = 0
-    for i in range(len(data) - 1,-1, -1):
-        if (data[i][1] == True):
-            #print(data[i][3])
-            for x in range(data[i][3]):
-                average[0] += data[i][0][0]
-                average[1] += data[i][0][1]
-                average[2] += data[i][0][2]
-                counter += 1
-            data.pop(i)
-    print()
-
-    if (counter > 0):
-        average[0] = average[0] / counter
-        average[1] = average[1] / counter
-        average[2] = average[2] / counter
-    # add counter to true false, etc... so i can get an accurate average
-    print('---average''')
-    print(average)
-
-    return average
 
 def setMinMax(bgr, level):
     maxRGB = [1,1,1]
@@ -306,7 +302,6 @@ if __name__ == "__main__":
         elif(sys.argv[1] == "p"):
             cb = colorBlindAI(True)
             cb.nextLevel()
-            cb.bgr.setData(cb.level)
             # cb.printCirclesRGB()
             
             # grabImage(4300,325,5100,1125) # 800, 800

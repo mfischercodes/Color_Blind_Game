@@ -45,9 +45,13 @@ class colorSpaces:
         self.name = name
         self.debugging = debugging
         self.data = []
+        self.singleIndex = 0
+        self.singleMaxVariance = 0 # may not need this as a variable
+        self.multipleIndex = 0
+        self.multipleMaxVariance = 0
         self.average = [0,0,0]
-        self.maxRGB = [[1,1,1],[0,0,0]]
-        self.minRGB = [[254,254,254],[255,255,255]]
+        self.maxRGB = [[1,1,1],[0,0,0]] # max, second max
+        self.minRGB = [[254,254,254],[255,255,255]] # min, second min
         self.colorSpace = NULL
         
         if name == 'bgr':
@@ -70,13 +74,14 @@ class colorSpaces:
         foundDuplicate = False
         var = 5
         recurse = True
-        #maxRGB, secondMaxRGB, minRGB, secondMinRGB = setMinMax(bgr, level)
 
         #TODO: remove variance or only have it be 1 or 2..?
 
         # go through all circles and put into data... 
         for i in range(self._circleAmounts[level]):
             tempColor = self.colorSpace[self._stages[level][i][1], self._stages[level][i][0]] # y,x
+            self.setMinMaxRGB(i, tempColor)
+            
             # compare each element to those in data and if duplicate with another set duplicate to true
             for x in range(len(self.data)):
                 if self.duplicateFound(tempColor, x, var):
@@ -89,39 +94,54 @@ class colorSpaces:
                 self.data.append([tempColor, False, i ,1 ,0]) 
             else:
                 foundDuplicate = False
-            
-            # self.setMinMaxRGB()
 
+        # TODO: check for case when var < 0? have to change other functions too then?
         if recurse:
             var -= 3
             self.setData(level)
 
+    def setMinMaxRGB(self, i, tempColor):
+        for z in range(3):
+            if (tempColor[z] > self.maxRGB[1][z] and tempColor[z] != self.maxRGB[0][z]):
+                if (tempColor[z] > self.maxRGB[0][z]):
+                    self.maxRGB[1][z] = self.maxRGB[0][z]
+                    self.maxRGB[0][z] = tempColor[z]
+                else:
+                    self.maxRGB[1][z] = tempColor[z]
+            if (tempColor[z] < self.minRGB[1][z] and tempColor[z] != self.minRGB[0][z]):
+                if (tempColor[z] < self.minRGB[0][z]):
+                    self.minRGB[1][z] = self.minRGB[0][z]
+                    self.minRGB[0][z] = tempColor[z]
+                else:
+                    self.minRGB[1][z] = tempColor[z]
 
-    #TODO: re-write the function using maxRGB, min RGB defined above as max / second [[,,],[,,]]
-    # setMinMax used in set data
-    def setMinMaxRGB(self):
-        maxRGB = [1,1,1]
-        secondMaxRGB = [0,0,0]
-        minRGB = [254,254,254]
-        secondMinRGB = [255,255,255]
+    def setSingleVarianceAndIndex(self, tempVar, i):
+        if tempVar > self.singleMaxVariance:
+            self.singleMaxVariance = tempVar
+            self.singleIndex = self.data[i][2]
 
-        for i in range(circleAmounts[level]):
-            color1 = bgr[stages[level][i][1],stages[level][i][0]] # y, x
-            for z in range(3):
-                if (color1[z] > secondMaxRGB[z] and color1[z] != maxRGB[z]):
-                    if (color1[z] > maxRGB[z]):
-                        secondMaxRGB[z] = maxRGB[z]
-                        maxRGB[z] = color1[z]
-                    else:
-                        secondMaxRGB[z] = color1[z]
-                if (color1[z] < secondMinRGB[z] and color1[z] != minRGB[z]):
-                    if (color1[z] < minRGB[z]):
-                        secondMinRGB[z] = minRGB[z]
-                        minRGB[z] = color1[z]
-                    else:
-                        secondMinRGB[z] = color1[z]
+    def setMultipleVarianceAndIndex(self, i):
+        subVariance = self.computeSubVariance(i)
+        if (subVariance > self.multipleMaxVariance):
+            self.multipleMaxVariance = subVariance
+            self.multipleIndex = self.data[i][2]
 
-        return (maxRGB, secondMaxRGB, minRGB, secondMinRGB)
+    def setMaxVariance(self):
+        tempVar = 0
+        for i in range(len(self.data)):
+            self.setMultipleVarianceAndIndex(i)
+
+            for x in range(3):
+                if (self.data[i][0][x] == self.maxRGB[0][x]):
+                    tempVar = self.maxRGB[0][x] - self.maxRGB[1][x]
+                    if tempVar > self.data[i][4]:
+                        self.data[i][4] = tempVar
+                if (self.data[i][0][x] == self.minRGB[0][x]):
+                    tempVar = self.minRGB[1][x] - self.minRGB[0][x]
+                    if tempVar > self.data[i][4]:
+                        self.data[i][4] = tempVar
+
+                self.setSingleVarianceAndIndex(tempVar, i)
 
     def duplicateFound(self, tempColor, x, var):
         if ((tempColor[0] < self.data[x][0][0] + var) and (tempColor[0] > self.data[x][0][0] - var) and 
@@ -200,27 +220,121 @@ class colorSpaces:
 
         self.average = avg
 
-    #TODO: implement this function
-    def setSingleVariance(self):
-        
+    def computeSubVariance(self, i):
+        return  (   abs(int(self.data[i][0][0]) - int(self.average[0])) \
+                +   abs(int(self.data[i][0][1]) - int(self.average[1])) \
+                +   abs(int(self.data[i][0][2]) - int(self.average[2])) )
 
-        print('maxRGB: ', maxRGB, 'secondMaxRGB: ', secondMaxRGB)
-        print('minRGB: ', minRGB, 'secondMinRGB: ', secondMinRGB)
+    # def compareFirstThreeUseThree(bgr, data, level):
+    #     maxSameVariance = 30
+    #     baseColor1 = bgr[stages[level][0][1],stages[level][0][0]] # y, x
+
+    #     var1v2 = computeSubVariance(data, 1, baseColor1)
+    #     var1v3 = computeSubVariance(data, 2, baseColor1)
+
+    #     if (var1v2 + var1v3 > maxSameVariance): # 2 mis match use # 3
+    #         return True
+    #     return False
+
+    # def setSingleIndex(self):
+    #     for i in range(len(self.data)):
+    #         if self.data[i][4] > singleMaxVariance:
+    #             singleMaxVariance = data[i][4]
+    #             singleIndex = data[i][2]
+    #         subVariance = computeSubVariance(data, i, baseColor)
+
+    def setMultipleIndex(self):
+        maxVariance = 0
+        index = 0
+        for i in range(len(self.data)):
+            subVariance = self.computeSubVariance(i)
+            if (subVariance > maxVariance):
+                maxVariance = subVariance
+                index = self.data[i][2]
+        return index
+
+    def setMisMatchIndex(self):
+        pass
+
+    def findMisMatchingCircle(self):
+        print()
+        pass
+        # baseColor = self.average
+        # TODO: base if statement if self.average fails on all false... if no variance?
+        '''
+        baseColor = bgr[stages[level][0][1],stages[level][0][0]] # y, x
+        if backup[0] != 0 or backup[1] != 0 or backup[2] != 0:
+            print("ran back up")
+            baseColor = backup
+        # should never run now as recurse for true only data
+        else: # if == 0 then no true valus in data use second backup element # 3
+            print("ran back up 2")
+            if compareFirstThreeUseThree(bgr, data, level):
+                baseColor = bgr[stages[level][2][1],stages[level][2][0]] # y, x
+        '''
+
+        # if (singleIndex != index and singleMaxVariance > singleMaxVarMinimum):
+        #     print("single index chosen:", singleIndex, "other index:", index)
+        #     return singleIndex
+        # else:
+        #     print("index chosen:", index, "single index:", singleIndex)
+        #     return index
+
+
+        #TODO: select all if not on next level yet
+        #TODO: make screenshot and check for white pixel in the left side of the circle
+        #TODO: if not then not next level pop data and select next one
+
+        # print('max:', maxVariance, "   singleMax: ", singleMaxVariance)
+        # print('index: ', index, 'singleVar: ', singleIndex)
+        # if (singleIndex != index and singleMaxVariance > singleMaxVarMinimum):
+        #     print("single index chosen:", singleIndex, "other index:", index)
+        #     return singleIndex
+        # else:
+        #     print("index chosen:", index, "single index:", singleIndex)
+        #     return index
+
+
+    def compareMaxVariance(bgr, data, level, backup): 
+        
+        baseColor = bgr[stages[level][0][1],stages[level][0][0]] # y, x
+        if backup[0] != 0 or backup[1] != 0 or backup[2] != 0:
+            print("ran back up")
+            baseColor = backup
+        # should never run now as recurse for true only data
+        else: # if == 0 then no true valus in data use second backup element # 3
+            print("ran back up 2")
+            if compareFirstThreeUseThree(bgr, data, level):
+                baseColor = bgr[stages[level][2][1],stages[level][2][0]] # y, x
+
+        singleMaxVarMinimum = 2
+        maxVariance = 0
+        singleMaxVariance = 0
+        index = 0
+        singleIndex = 0
 
         for i in range(len(data)):
-            for x in range(3):
-                if (data[i][0][x] == maxRGB[x]):
-                    temp = maxRGB[x] - secondMaxRGB[x]
-                    #print(i, " : ", x, ": ", temp)
-                    if temp > data[i][4]:
-                        data[i][4] = temp
-                if (data[i][0][x] == minRGB[x]):
-                    temp = secondMinRGB[x] - minRGB[x]
-                    #print(i, " : ", x, ": ", temp)
-                    if temp > data[i][4]:
-                        data[i][4] = temp
+            # if data[i][4] > singleMaxVariance:
+            #     singleMaxVariance = data[i][4]
+            #     singleIndex = data[i][2]
 
-        print("---- left over data -----")
-        printLeftOverData(data)
 
-        return (data, backup)
+            subVariance = computeSubVariance(data, i, baseColor)
+
+            print(subVariance)
+            if (subVariance > maxVariance):
+                maxVariance = subVariance
+                index = data[i][2]
+
+        #TODO: select all if not on next level yet
+        #TODO: make screenshot and check for white pixel in the left side of the circle
+        #TODO: if not then not next level pop data and select next one
+
+        print('max:', maxVariance, "   singleMax: ", singleMaxVariance)
+        print('index: ', index, 'singleVar: ', singleIndex)
+        if (singleIndex != index and singleMaxVariance > singleMaxVarMinimum):
+            print("single index chosen:", singleIndex, "other index:", index)
+            return singleIndex
+        else:
+            print("index chosen:", index, "single index:", singleIndex)
+            return index

@@ -26,7 +26,6 @@ from colorSpaces import colorSpaces
 
 class colorBlindAI:
     clickDelay = 1
-    level = 0
     clickIndex = 0
     _ssDefault = 'Photos/screenshot'
     _ssExtention = '.png'
@@ -61,8 +60,10 @@ class colorBlindAI:
 
     _stages = [_stage2x2, _stage3x3, _stage4x4, _stage5x5, _stage6x6]
 
-    def __init__(self, debugging = False):
+    def __init__(self, debugging = False, level = 0):
         self.debugging = debugging
+        self.level = level
+        self.subLevels = 1
         self.image = NULL
         self.rgb = NULL
         self.bgr = NULL
@@ -89,7 +90,8 @@ class colorBlindAI:
         self.hsv = colorSpaces('hsv')
 
     # Description: adds to obj.data [rgb color, duplicate T/F, index, amount, max variance]
-    # Post-condition: ColorSpaces objects.data is set t
+    # Post-condition: ColorSpaces obj.data is changed
+    #                 ColorSpaces obj.maxRGB and obj.minRGB is changed
     def setData(self):
         self.rgb.setData(self.level)
         self.bgr.setData(self.level)
@@ -99,6 +101,26 @@ class colorBlindAI:
             self.rgb.printData()
             self.bgr.printData()
             self.hsv.printData()
+
+    def setMaxVariances(self):
+        self.rgb.setMaxVariance()
+        self.bgr.setMaxVariance()
+        self.hsv.setMaxVariance()
+
+        if self.debugging:
+            self.rgb.printData()
+            self.bgr.printData()
+            self.hsv.printData()
+
+    def setMisMatchIndex(self):
+        #TODO: compare all index's properly
+        self.clickIndex = self.rgb.multipleIndex
+
+        if self.debugging:
+            print(self.rgb.name, " multipleIndex: ", self.rgb.multipleIndex, "   singleIndex: ", self.rgb.singleIndex)
+            print(self.bgr.name, " multipleIndex: ", self.bgr.multipleIndex, "   singleIndex: ", self.bgr.singleIndex)
+            print(self.hsv.name, " multipleIndex: ", self.hsv.multipleIndex, "   singleIndex: ", self.hsv.singleIndex)
+        
 
     # Description: computes the average of all the true obj.data and deletes duplicates
     # Post-condition: removes all duplicates from ColorSpaces obj.data
@@ -115,167 +137,21 @@ class colorBlindAI:
         self.printCircles()
         self.setData()
         self.removeDuplicatesAndComputeAverageOfDuplicates()
+        self.setMaxVariances()
+        self.setMisMatchIndex()
+        self.ClickMouse()
+        if self.subLevels == self._levelAmounts[self.level]:
+            self.level += 1
+        self.subLevels += 1
 
-        # average is used for comparing max variance from all rgb values
-        # min, max rgb used for comparing single max variance across all rgb values
 
     def ClickMouse(self):
-        mouse.move(self._stages[self.currentLevel][self.clickIndex][0] + self._mouseClickOffset[0], 
-                   self._stages[self.currentLevel][self.clickIndex][1] + self._mouseClickOffset[1])
+        mouse.move(self._stages[self.level][self.clickIndex][0] + self._mouseClickOffset[0], 
+                   self._stages[self.level][self.clickIndex][1] + self._mouseClickOffset[1])
         time.sleep(self.clickDelay)
         if not self.debugging:
             mouse.click('left')
 
-def setMinMax(bgr, level):
-    maxRGB = [1,1,1]
-    secondMaxRGB = [0,0,0]
-    minRGB = [254,254,254]
-    secondMinRGB = [255,255,255]
-
-    for i in range(circleAmounts[level]):
-        color1 = bgr[stages[level][i][1],stages[level][i][0]] # y, x
-        for z in range(3):
-            if (color1[z] > secondMaxRGB[z] and color1[z] != maxRGB[z]):
-                if (color1[z] > maxRGB[z]):
-                    secondMaxRGB[z] = maxRGB[z]
-                    maxRGB[z] = color1[z]
-                else:
-                    secondMaxRGB[z] = color1[z]
-            if (color1[z] < secondMinRGB[z] and color1[z] != minRGB[z]):
-                if (color1[z] < minRGB[z]):
-                    secondMinRGB[z] = minRGB[z]
-                    minRGB[z] = color1[z]
-                else:
-                    secondMinRGB[z] = color1[z]
-
-    return (maxRGB, secondMaxRGB, minRGB, secondMinRGB)
-
-def setData(bgr, level, var):
-    data = []
-    foundDuplicate = False
-    recurse = True
-    maxRGB, secondMaxRGB, minRGB, secondMinRGB = setMinMax(bgr, level)
-    #TODO: use different sorting algorithmn? Sorted array?
-    #TODO: Organize functions... make into an OOP so i dont have to transfer data everywhere
-    printCircles(bgr,level)
-
-    for i in range(circleAmounts[level]):
-        color1 = bgr[stages[level][i][1],stages[level][i][0]] # y, x
-
-        for x in range(len(data)):
-            # if duplicate in array, set it to true
-            if ((color1[0] < data[x][0][0] + var) and (color1[0] > data[x][0][0] - var) and 
-                (color1[1] < data[x][0][1] + var) and (color1[1] > data[x][0][1] - var) and
-                (color1[2] < data[x][0][2] + var) and (color1[2] > data[x][0][2] - var)):
-                data[x][1] = True
-                data[x][3] += 1
-                foundDuplicate = True
-                break
-        
-        if (foundDuplicate == False):
-            data.append([color1, False, i, 1, 0])
-        else:
-            foundDuplicate = False
-
-    for i in range(len(data)):
-        if data[i][1] == False and recurse == True:
-            recurse = False
-
-    # if all data true re-run setData with lower variance
-    if recurse == True:
-        print("---all data true, recurse")
-        var -= 3
-        return setData(bgr,level, var)
-    else:
-        print("---- all data -----")
-        printData(data)
-
-        backup = deleteDuplicates(data)
-
-        print('maxRGB: ', maxRGB, 'secondMaxRGB: ', secondMaxRGB)
-        print('minRGB: ', minRGB, 'secondMinRGB: ', secondMinRGB)
-
-        for i in range(len(data)):
-            for x in range(3):
-                if (data[i][0][x] == maxRGB[x]):
-                    temp = maxRGB[x] - secondMaxRGB[x]
-                    #print(i, " : ", x, ": ", temp)
-                    if temp > data[i][4]:
-                        data[i][4] = temp
-                if (data[i][0][x] == minRGB[x]):
-                    temp = secondMinRGB[x] - minRGB[x]
-                    #print(i, " : ", x, ": ", temp)
-                    if temp > data[i][4]:
-                        data[i][4] = temp
-
-        print("---- left over data -----")
-        printLeftOverData(data)
-
-        return (data, backup)
-
-def computeSubVariance(data, i, baseColor):
-    return  (   abs(int(data[i][0][0]) - int(baseColor[0])) \
-            +   abs(int(data[i][0][1]) - int(baseColor[1])) \
-            +   abs(int(data[i][0][2]) - int(baseColor[2])) )
-
-def compareFirstThreeUseThree(bgr, data, level):
-    maxSameVariance = 30
-    baseColor1 = bgr[stages[level][0][1],stages[level][0][0]] # y, x
-
-    var1v2 = computeSubVariance(data, 1, baseColor1)
-    var1v3 = computeSubVariance(data, 2, baseColor1)
-
-    if (var1v2 + var1v3 > maxSameVariance): # 2 mis match use # 3
-        return True
-    return False
-
-def compareMaxVariance(bgr, data, level, backup): 
-    
-    baseColor = bgr[stages[level][0][1],stages[level][0][0]] # y, x
-    if backup[0] != 0 or backup[1] != 0 or backup[2] != 0:
-        print("ran back up")
-        baseColor = backup
-    # should never run now as recurse for true only data
-    else: # if == 0 then no true valus in data use second backup element # 3
-        print("ran back up 2")
-        if compareFirstThreeUseThree(bgr, data, level):
-            baseColor = bgr[stages[level][2][1],stages[level][2][0]] # y, x
-
-    singleMaxVarMinimum = 2
-    maxVariance = 0
-    singleMaxVariance = 0
-    index = 0
-    singleIndex = 0
-
-    for i in range(len(data)):
-        if data[i][4] > singleMaxVariance:
-            singleMaxVariance = data[i][4]
-            singleIndex = data[i][2]
-        subVariance = computeSubVariance(data, i, baseColor)
-
-        print(subVariance)
-        if (subVariance > maxVariance):
-            maxVariance = subVariance
-            index = data[i][2]
-
-    #TODO: select all if not on next level yet
-    #TODO: make screenshot and check for white pixel in the left side of the circle
-    #TODO: if not then not next level pop data and select next one
-
-    print('max:', maxVariance, "   singleMax: ", singleMaxVariance)
-    print('index: ', index, 'singleVar: ', singleIndex)
-    if (singleIndex != index and singleMaxVariance > singleMaxVarMinimum):
-        print("single index chosen:", singleIndex, "other index:", index)
-        return singleIndex
-    else:
-        print("index chosen:", index, "single index:", singleIndex)
-        return index
-
-def findMisMatch(bgr, level):
-    var = 3
-    data, backup = setData(bgr,level, var)
-    index = compareMaxVariance(bgr, data, level, backup)
-    return index
 
 def runGame():
     for j in range(len(stages)):
@@ -300,7 +176,8 @@ if __name__ == "__main__":
                 time.sleep(1.25) # between rounds   
 
         elif(sys.argv[1] == "p"):
-            cb = colorBlindAI(True)
+            level = int(sys.argv[2]) - 2
+            cb = colorBlindAI(True, level)
             cb.nextLevel()
             # cb.printCirclesRGB()
             
@@ -321,7 +198,11 @@ if __name__ == "__main__":
             print('use arguments:\nl2   \np2   \nss')
 
     else:
-        runGame()
+        cb = colorBlindAI()
+        for i in range(25):
+            cb.nextLevel()
+            time.sleep(1.25)
+        #runGame()
 
 
 

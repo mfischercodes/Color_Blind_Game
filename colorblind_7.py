@@ -114,6 +114,9 @@ class colorBlindAI:
             self.hsv.printData()
 
     def setIndexCounter(self, indexObject):
+        #TODO: input object instead of index so i can append single variance
+        #TODO: remove bgr from choices when it is black
+        #TODO: prioritize single Index1
         ranOnce = False
         for i in range(len(self.indexCounter)):
             if indexObject == self.indexCounter[i][0]:
@@ -169,7 +172,7 @@ class colorBlindAI:
         self.setColorSpaces()
         self.printCircles()
         self.setData()
-        self.removeDuplicatesAndComputeAverageOfDuplicates()
+        # self.removeDuplicatesAndComputeAverageOfDuplicates()
         self.setMaxVariances()
         self.setMisMatchIndex()
         self.ClickMouse()
@@ -178,14 +181,16 @@ class colorBlindAI:
             self.subLevels = 0
         self.subLevels += 1
         self.indexCounter = []
+        #TODO: remove variance and fix recurse with setting average to average of 3
+        #TODO: record audio for youtube video
 
 
     def ClickMouse(self):
         mouse.move(self._stages[self.level][self.clickIndex][0] + self._mouseClickOffset[0], 
                    self._stages[self.level][self.clickIndex][1] + self._mouseClickOffset[1])
         time.sleep(self.clickDelay)
-        if not self.debugging:
-            mouse.click('left')
+        # if not self.debugging:
+        mouse.click('left')
 
 
 def runGame():
@@ -233,10 +238,10 @@ if __name__ == "__main__":
             print('use arguments:\nl2   \np2   \nss')
 
     else:
-        cb = colorBlindAI()
+        cb = colorBlindAI(True)
         for i in range(500):
             cb.nextLevel()
-            time.sleep(0.6)
+            time.sleep(1)
         #runGame()
 
 

@@ -64,6 +64,7 @@ class colorBlindAI:
         self.debugging = debugging
         self.level = level
         self.subLevels = 1
+        self.indexCounter = []
         self.image = NULL
         self.rgb = NULL
         self.bgr = NULL
@@ -112,9 +113,41 @@ class colorBlindAI:
             self.bgr.printData()
             self.hsv.printData()
 
+    def setIndexCounter(self, indexObject):
+        ranOnce = False
+        for i in range(len(self.indexCounter)):
+            if indexObject == self.indexCounter[i][0]:
+                self.indexCounter[i][1] += 1
+                ranOnce = True
+        if not ranOnce:
+            self.indexCounter.append([indexObject,1])
+
+        
+
     def setMisMatchIndex(self):
-        #TODO: compare all index's properly
-        self.clickIndex = self.rgb.multipleIndex
+        self.setIndexCounter(self.rgb.multipleIndex)
+        self.setIndexCounter(self.rgb.singleIndex)
+        self.setIndexCounter(self.bgr.multipleIndex)
+        self.setIndexCounter(self.bgr.singleIndex)
+        self.setIndexCounter(self.hsv.multipleIndex)
+        self.setIndexCounter(self.hsv.singleIndex)
+
+        max = 0
+        index = 0
+
+        for i in range(len(self.indexCounter)):
+            print(self.indexCounter[i][1])
+            if self.indexCounter[i][1] > max:
+                max = self.indexCounter[i][1]
+                index = self.indexCounter[i][0]
+
+        self.clickIndex = index
+
+        if self.debugging:
+            print("index counter: ", self.indexCounter)
+            print('max: ', max, '   index: ', index)
+            print()
+        
 
         if self.debugging:
             print(self.rgb.name, " multipleIndex: ", self.rgb.multipleIndex, "   singleIndex: ", self.rgb.singleIndex)
@@ -142,7 +175,9 @@ class colorBlindAI:
         self.ClickMouse()
         if self.subLevels == self._levelAmounts[self.level]:
             self.level += 1
+            self.subLevels = 0
         self.subLevels += 1
+        self.indexCounter = []
 
 
     def ClickMouse(self):
@@ -199,9 +234,9 @@ if __name__ == "__main__":
 
     else:
         cb = colorBlindAI()
-        for i in range(25):
+        for i in range(500):
             cb.nextLevel()
-            time.sleep(1.25)
+            time.sleep(0.6)
         #runGame()
 
 

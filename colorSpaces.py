@@ -46,6 +46,7 @@ class colorSpaces:
         self.debugging = debugging
         self.data = []
         self.singleIndex = 0
+        self.isBlack = False
         self.singleMaxVariance = 0 # may not need this as a variable
         self.multipleIndex = 0
         self.multipleMaxVariance = 0
@@ -75,6 +76,7 @@ class colorSpaces:
         var = 5
         recurse = True
 
+        #TODO: check for black for bgr and turn isBlack to T/F
         #TODO: remove variance or only have it be 1 or 2..?
 
         # go through all circles and put into data... 
@@ -126,7 +128,15 @@ class colorSpaces:
             self.multipleMaxVariance = subVariance
             self.multipleIndex = self.data[i][2]
 
+    #TODO later fix error
+    def setBlack(self):
+        var = 50
+        if  ((self.data[0][0][0] < var and self.data[0][0][1] < var and self.data[0][0][2] < var) and 
+             (self.data[1][0][0] < var and self.data[1][0][1] < var and self.data[1][0][2] < var)):
+                self.isBlack = True
+
     def setMaxVariance(self):
+
         tempVar = 0
         for i in range(len(self.data)):
             self.setMultipleVarianceAndIndex(i)

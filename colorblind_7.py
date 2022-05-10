@@ -113,42 +113,69 @@ class colorBlindAI:
             self.bgr.printData()
             self.hsv.printData()
 
-    def setIndexCounter(self, indexObject):
-        #TODO: input object instead of index so i can append single variance
-        #TODO: remove bgr from choices when it is black
-        #TODO: prioritize single Index1
-        ranOnce = False
+    def setIndexCounter(self, objectName):
+        indexObjectM = 0
+        indexObjectS = 0
+        ranOnceM = False
+        ranOnceS = False
+
+        if objectName == 'rgb':
+            indexObjectM = self.rgb.multipleIndex
+            indexObjectS = self.rgb.singleIndex
+        elif objectName == 'bgr':
+            if self.bgr.isBlack:
+                return
+            indexObjectM = self.bgr.multipleIndex
+            indexObjectS = self.bgr.singleIndex
+        else:
+            indexObjectM = self.hsv.multipleIndex
+            indexObjectS = self.hsv.singleIndex
+        
         for i in range(len(self.indexCounter)):
-            if indexObject == self.indexCounter[i][0]:
+            if indexObjectM == self.indexCounter[i][0]:
                 self.indexCounter[i][1] += 1
-                ranOnce = True
-        if not ranOnce:
-            self.indexCounter.append([indexObject,1])
+                ranOnceM = True
+        if not ranOnceM:
+            self.indexCounter.append([indexObjectM, 1, 'M'])
+
+        for i in range(len(self.indexCounter)):
+            if indexObjectS == self.indexCounter[i][0]:
+                self.indexCounter[i][1] += 1
+                ranOnceS = True
+        if not ranOnceS:
+            self.indexCounter.append([indexObjectS, 1, 'S'])
 
         
 
     def setMisMatchIndex(self):
-        self.setIndexCounter(self.rgb.multipleIndex)
-        self.setIndexCounter(self.rgb.singleIndex)
-        self.setIndexCounter(self.bgr.multipleIndex)
-        self.setIndexCounter(self.bgr.singleIndex)
-        self.setIndexCounter(self.hsv.multipleIndex)
-        self.setIndexCounter(self.hsv.singleIndex)
+        self.setIndexCounter(self.rgb.name)
+        self.setIndexCounter(self.bgr.name)
+        self.setIndexCounter(self.hsv.name)
 
         max = 0
+        single = False
         index = 0
 
         for i in range(len(self.indexCounter)):
-            print(self.indexCounter[i][1])
             if self.indexCounter[i][1] > max:
                 max = self.indexCounter[i][1]
                 index = self.indexCounter[i][0]
+                if self.indexCounter[i][2] == 'S':
+                    single = True
+                else:
+                    single = False
+            if self.indexCounter[i][1] == max:
+                if single == False and self.indexCounter[i][2] == 'S':
+                    max = self.indexCounter[i][1]
+                    index = self.indexCounter[i][0]
+                    single = True
 
         self.clickIndex = index
 
         if self.debugging:
             print("index counter: ", self.indexCounter)
             print('max: ', max, '   index: ', index)
+            print('bgr is black: ', self.bgr.isBlack)
             print()
         
 
@@ -173,6 +200,7 @@ class colorBlindAI:
         self.printCircles()
         self.setData()
         # self.removeDuplicatesAndComputeAverageOfDuplicates()
+        self.bgr.setBlack()
         self.setMaxVariances()
         self.setMisMatchIndex()
         self.ClickMouse()
@@ -189,8 +217,8 @@ class colorBlindAI:
         mouse.move(self._stages[self.level][self.clickIndex][0] + self._mouseClickOffset[0], 
                    self._stages[self.level][self.clickIndex][1] + self._mouseClickOffset[1])
         time.sleep(self.clickDelay)
-        # if not self.debugging:
-        mouse.click('left')
+        if not self.debugging:
+            mouse.click('left')
 
 
 def runGame():

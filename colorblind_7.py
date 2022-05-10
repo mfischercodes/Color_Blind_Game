@@ -14,15 +14,10 @@ import time
 import sys
 from colorSpaces import colorSpaces
 
-#TODO: refactor
-#TODO: make color Object of just plain BGR and compare to that one too
-#TODO: make a main program instead of having main run in init 
-#       so I can loop for next level
-#TODO: set data, etc in ColorSpaces
-#TODO: do bgr2hsv color space?
-# colorSpace = cv.cvtColor(img, cv.COLOR_BGR2HSV)
-#TODO: compare all color modes and find most common matching one?
-#TODO: Make some color modes selection null if it is close to black or white
+#TODO: last resort check for next level if not then pop max and recompute max index
+#TODO: reach 100
+#TODO: use black background for recording final AI
+#TODO: record audio for youtube video
 
 class colorBlindAI:
     clickDelay = 1
@@ -60,9 +55,10 @@ class colorBlindAI:
 
     _stages = [_stage2x2, _stage3x3, _stage4x4, _stage5x5, _stage6x6]
 
-    def __init__(self, debugging = False, level = 0):
+    def __init__(self, debugging = False, level = 0, click = False):
         self.debugging = debugging
         self.level = level
+        self.click = click
         self.subLevels = 1
         self.indexCounter = []
         self.image = NULL
@@ -176,6 +172,7 @@ class colorBlindAI:
             print("index counter: ", self.indexCounter)
             print('max: ', max, '   index: ', index)
             print('bgr is black: ', self.bgr.isBlack)
+            print("level: ", self.level, "  sublevel: ", self.subLevels)
             print()
         
 
@@ -189,9 +186,16 @@ class colorBlindAI:
     # Post-condition: removes all duplicates from ColorSpaces obj.data
     #                 sets obj.average 
     def removeDuplicatesAndComputeAverageOfDuplicates(self):
-        self.rgb.deleteDuplicatesAndComputeAverageOfDuplicates()
-        self.bgr.deleteDuplicatesAndComputeAverageOfDuplicates()
-        self.hsv.deleteDuplicatesAndComputeAverageOfDuplicates()
+        self.rgb.deleteDuplicatesAndComputeAverageOfDuplicates(self.level)
+        self.bgr.deleteDuplicatesAndComputeAverageOfDuplicates(self.level)
+        self.hsv.deleteDuplicatesAndComputeAverageOfDuplicates(self.level)
+
+    def incrementLevel(self):
+        if self.subLevels == self._levelAmounts[self.level]:
+            self.level += 1
+            self.subLevels = 0
+        self.subLevels += 1
+        self.indexCounter = []
 
     # Description: grabs, screenshot, sets 3 color objects, cleans data, finds mismatch
     def nextLevel(self):
@@ -199,78 +203,39 @@ class colorBlindAI:
         self.setColorSpaces()
         self.printCircles()
         self.setData()
-        # self.removeDuplicatesAndComputeAverageOfDuplicates()
+        self.removeDuplicatesAndComputeAverageOfDuplicates()
         self.bgr.setBlack()
         self.setMaxVariances()
         self.setMisMatchIndex()
         self.ClickMouse()
-        if self.subLevels == self._levelAmounts[self.level]:
-            self.level += 1
-            self.subLevels = 0
-        self.subLevels += 1
-        self.indexCounter = []
-        #TODO: remove variance and fix recurse with setting average to average of 3
-        #TODO: record audio for youtube video
-
+        self.incrementLevel()
 
     def ClickMouse(self):
         mouse.move(self._stages[self.level][self.clickIndex][0] + self._mouseClickOffset[0], 
                    self._stages[self.level][self.clickIndex][1] + self._mouseClickOffset[1])
         time.sleep(self.clickDelay)
-        if not self.debugging:
+        if self.click:
             mouse.click('left')
-
-
-def runGame():
-    for j in range(len(stages)):
-        for i in range(levelAmounts[j]):
-            grabImage(4300,325,5100,1125) # 800, 800
-            bgr = convertBGR(False, j)
-            index = findMisMatch(bgr,j)
-            clickMouse(index, j, True)
-            time.sleep(1) # between rounds 
 
 if __name__ == "__main__":
     if len(sys.argv) == 3:
         if(sys.argv[1] == "l"):
-            i = int(sys.argv[2]) - 2
-            for j in range(levelAmounts[i]):
-                grabImage(4300,325,5100,1125) # 800, 800
-                bgr = convertBGR(False, i)
-                index = findMisMatch(bgr,i)
-                print(index)
-                clickMouse(index, i, True)
-                
-                time.sleep(1.25) # between rounds   
-
+            level = int(sys.argv[2]) - 2
+            cb = colorBlindAI(True, level, True)
+            for i in range(len(cb._levelAmounts)):
+                cb.nextLevel()
+                time.sleep(1)
         elif(sys.argv[1] == "p"):
             level = int(sys.argv[2]) - 2
-            cb = colorBlindAI(True, level)
+            cb = colorBlindAI(True, level, False)
             cb.nextLevel()
-            # cb.printCirclesRGB()
-            
-            # grabImage(4300,325,5100,1125) # 800, 800
-            # i = int(sys.argv[2]) - 2
-            # # print(i)
-            # bgr = convertBGR(True, i)
-            # index = findMisMatch(bgr,i)
-            # print(index)
-            # clickMouse(index, i, False)
-            #TODO: put click mouse into findMisMatch and check for white circle on left
-
-        elif(sys.argv[1] == "s"):
-            grabImage(4300,325,5100,1125) # 800, 800
-            print('screenshot')
-
         else:
             print('use arguments:\nl2   \np2   \nss')
-
     else:
-        cb = colorBlindAI(True)
+        cb = colorBlindAI(True, 0, True)
         for i in range(500):
             cb.nextLevel()
             time.sleep(1)
-        #runGame()
 
 
 

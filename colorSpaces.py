@@ -221,8 +221,11 @@ class colorSpaces:
                     avg[2] += self.data[i][0][2]
                     counter += 1
                 self.data.pop(i)
-        #TODO: compare before pop as cases when only 2 values after pop
-        #[0,0,2], [0,0,1]
+
+        if self.isBlack:
+            self.average = [1,1,1]
+            return
+
         if avg == [0,0,0]:
             self.average = self.compareFirstThree(level)
             return

@@ -14,10 +14,7 @@ import time
 import sys
 from colorSpaces import colorSpaces
 
-#TODO: last resort check for next level if not then pop max and recompute max index
-#TODO: reach 100
-#TODO: use black background for recording final AI
-#TODO: record audio for youtube video
+#TODO: Goal reach 100
 
 class colorBlindAI:
     clickDelay = 1
@@ -58,6 +55,7 @@ class colorBlindAI:
     def __init__(self, debugging = False, level = 0, click = False):
         self.debugging = debugging
         self.level = level
+        self.onNextLevel = False
         self.click = click
         self.subLevels = 1
         self.indexCounter = []
@@ -65,6 +63,8 @@ class colorBlindAI:
         self.rgb = NULL
         self.bgr = NULL
         self.hsv = NULL
+        self.rgbNext = NULL
+        self.rgbColorBackup = NULL
         
     # Description: prints the rgb values of all 3 ColorSpace objects circles
     def printCircles(self):
@@ -75,10 +75,10 @@ class colorBlindAI:
 
     # Description: Grabs a screenshot from the given coordinates in _ssRegion
     # Post-condition: sets self.image
-    def setImage(self):
+    def setImage(self, addon = ''):
         self.image = ImageGrab.grab(bbox=(self._ssRegion[0], 
                 self._ssRegion[1], self._ssRegion[2], self._ssRegion[3])) #top_x,top_y, bot_x, bot_y
-        self.image.save(self._ssDefault + self._ssExtention)
+        self.image.save(self._ssDefault + addon + self._ssExtention)
 
     # Description: set 3 ColorSpace objects with different color modes
     def setColorSpaces(self):
@@ -196,6 +196,7 @@ class colorBlindAI:
             self.subLevels = 0
         self.subLevels += 1
         self.indexCounter = []
+        self.onNextLevel = True
 
     # Description: grabs, screenshot, sets 3 color objects, cleans data, finds mismatch
     def nextLevel(self):
@@ -203,12 +204,80 @@ class colorBlindAI:
         self.setColorSpaces()
         self.printCircles()
         self.setData()
-        self.removeDuplicatesAndComputeAverageOfDuplicates()
         self.bgr.setBlack()
-        self.setMaxVariances()
-        self.setMisMatchIndex()
-        self.ClickMouse()
+        self.removeDuplicatesAndComputeAverageOfDuplicates()
+        
+        for i in range(3):
+            if self.onNextLevel == False:
+                print('---------run ', i, '--------------', self.onNextLevel)
+                print('single variance ', self.rgb.singleMaxVariance)
+                self.setMaxVariances()
+                print('single variance ', self.rgb.singleMaxVariance)
+                self.setMisMatchIndex()
+                self.setBackUpColor()
+                self.ClickMouse()
+                self.checkForNextLevel()
+                self.popMax()
+                   
+
+        # check for white circle on grabbed image... saved as different screenshot
+        # if not white then same level
+        # pop max and recompute misMatch Index
+        # for loop for nextLevel up to 5... break if next level is true
         self.incrementLevel()
+
+    def setBackUpColor(self):
+        self.rgbColorBackup = self.rgb.colorSpace[self._stages[level][0][1], self._stages[level][0][0]] # y,x
+
+    def checkForNextLevel(self):
+        self.setImage('_nextLevel')
+        time.sleep(0.5)
+        self.rgbNext = colorSpaces('rgb')
+        tempColor = self.rgbNext.colorSpace[self._stages[level][0][1], self._stages[level][0][0]] # y,x
+
+        print("temp1: ", self.rgbColorBackup, "   temp2: ", tempColor)
+
+        if not(self.rgbColorBackup[0] == tempColor[0] and
+            self.rgbColorBackup[1] == tempColor[1] and
+            self.rgbColorBackup[2] == tempColor[2]):
+            self.onNextLevel = True
+
+    def popMax(self):
+        if self.onNextLevel:
+            return
+        print()
+        print(self.clickIndex)
+        print('rgb')
+        for i in range(len(self.rgb.data)):
+            if self.rgb.data[i][2] == self.clickIndex:
+                print(self.rgb.data[i])
+                self.rgb.data.pop(i)
+                break
+        for i in range(len(self.bgr.data)):
+            if self.bgr.data[i][2] == self.clickIndex:
+                print(self.bgr.data[i])
+                self.bgr.data.pop(i)
+                break
+        for i in range(len(self.hsv.data)):
+            if self.hsv.data[i][2] == self.clickIndex:
+                print(self.hsv.data[i])
+                self.hsv.data.pop(i)
+                break
+        #TODO: reset singleMax var for all objects
+        #TODO: get singleVariance as priority instead of multiple...
+        self.rgb.singleMaxVariance = 0
+        self.rgb.multipleIndex = 0
+        self.bgr.singleMaxVariance = 0
+        self.bgr.multipleIndex = 0
+        self.hsv.singleMaxVariance = 0
+        self.hsv.multipleIndex = 0
+
+        # rgb single still picked 11?
+        # self.rgb.data
+        # go into rgb, bgr, and hsv objects data and pop data with matching index as click index
+        # then it will loop and recompute max
+        
+
 
     def ClickMouse(self):
         mouse.move(self._stages[self.level][self.clickIndex][0] + self._mouseClickOffset[0], 
@@ -216,6 +285,8 @@ class colorBlindAI:
         time.sleep(self.clickDelay)
         if self.click:
             mouse.click('left')
+
+    
 
 if __name__ == "__main__":
     if len(sys.argv) == 3:

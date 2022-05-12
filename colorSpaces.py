@@ -119,7 +119,7 @@ class colorSpaces:
             self.multipleIndex = self.data[i][2]
 
     def setBlack(self):
-        var = 50
+        var = 30
         if  ((self.data[0][0][0] < var and self.data[0][0][1] < var and self.data[0][0][2] < var) and 
              (self.data[1][0][0] < var and self.data[1][0][1] < var and self.data[1][0][2] < var)):
                 self.isBlack = True

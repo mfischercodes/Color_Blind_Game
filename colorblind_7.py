@@ -24,7 +24,7 @@ class colorBlindAI:
     
     _ssRegion = (4300,325,5100,1125) # screen shot region upper_x, upper_y, lower_x, lower_y
     _circleAmounts = [4, 9, 16, 25, 36] # amount of circles per level
-    _levelAmounts = [4, 15, 15, 15, 25] # amount of levels with same grid pattern
+    _levelAmounts = [4, 15, 15, 15, 500] # amount of levels with same grid pattern # prob just 30...
     _mouseClickOffset = (4280,320)
 
     #region stages
@@ -56,6 +56,7 @@ class colorBlindAI:
         self.debugging = debugging
         self.level = level
         self.onNextLevel = False
+        self.onFirstRun = 0
         self.click = click
         self.subLevels = 1
         self.indexCounter = []
@@ -141,10 +142,10 @@ class colorBlindAI:
         if not ranOnceS:
             self.indexCounter.append([indexObjectS, 1, 'S'])
 
-        
-
-    def setMisMatchIndex(self):
+    def setMisMatchIndex(self, recurseLevel):
+        print("index counter: ", self.indexCounter)
         self.setIndexCounter(self.rgb.name)
+        print("index counter: ", self.indexCounter)
         self.setIndexCounter(self.bgr.name)
         self.setIndexCounter(self.hsv.name)
 
@@ -152,19 +153,30 @@ class colorBlindAI:
         single = False
         index = 0
 
-        for i in range(len(self.indexCounter)):
-            if self.indexCounter[i][1] > max:
-                max = self.indexCounter[i][1]
-                index = self.indexCounter[i][0]
-                if self.indexCounter[i][2] == 'S':
-                    single = True
-                else:
-                    single = False
-            if self.indexCounter[i][1] == max:
-                if single == False and self.indexCounter[i][2] == 'S':
+        #TODO: fix order of max for second run based off of single max variance
+
+        # first run
+        if recurseLevel == self.onFirstRun:
+            for i in range(len(self.indexCounter)):
+                if self.indexCounter[i][1] > max:
                     max = self.indexCounter[i][1]
                     index = self.indexCounter[i][0]
-                    single = True
+                    if self.indexCounter[i][2] == 'S':
+                        single = True
+                    else:
+                        single = False
+                if self.indexCounter[i][1] == max:
+                    if single == False and self.indexCounter[i][2] == 'S':
+                        max = self.indexCounter[i][1]
+                        index = self.indexCounter[i][0]
+                        single = True
+        else: # 2nd+ run only compare single index's
+            print("---------------ran")
+            for i in range(len(self.indexCounter)):
+                if self.indexCounter[i][2] == 'S':
+                    if self.indexCounter[i][1] > max:
+                        max = self.indexCounter[i][1]
+                        index = self.indexCounter[i][0]
 
         self.clickIndex = index
 
@@ -196,11 +208,16 @@ class colorBlindAI:
             self.subLevels = 0
         self.subLevels += 1
         self.indexCounter = []
-        self.onNextLevel = True
 
     # Description: grabs, screenshot, sets 3 color objects, cleans data, finds mismatch
     def nextLevel(self):
-        self.setImage()
+        print('----------------')
+        print("on next level: ", end = '')
+        print(self.onNextLevel)
+        if self.onNextLevel == False:
+            time.sleep(0.2)
+            self.setImage()
+        self.onNextLevel = False
         self.setColorSpaces()
         self.printCircles()
         self.setData()
@@ -208,76 +225,73 @@ class colorBlindAI:
         self.removeDuplicatesAndComputeAverageOfDuplicates()
         
         for i in range(3):
-            if self.onNextLevel == False:
-                print('---------run ', i, '--------------', self.onNextLevel)
-                print('single variance ', self.rgb.singleMaxVariance)
-                self.setMaxVariances()
-                print('single variance ', self.rgb.singleMaxVariance)
-                self.setMisMatchIndex()
-                self.setBackUpColor()
-                self.ClickMouse()
-                self.checkForNextLevel()
-                self.popMax()
-                   
-
-        # check for white circle on grabbed image... saved as different screenshot
-        # if not white then same level
-        # pop max and recompute misMatch Index
-        # for loop for nextLevel up to 5... break if next level is true
+            print('---------run ', i, '--------------', self.onNextLevel)
+            self.setMaxVariances()
+            self.setMisMatchIndex(i)
+            self.setBackUpColor()
+            self.ClickMouse()
+            time.sleep(0.2)
+            if self.checkForNextLevel():
+                break
+            self.popMax()
         self.incrementLevel()
 
     def setBackUpColor(self):
-        self.rgbColorBackup = self.rgb.colorSpace[self._stages[level][0][1], self._stages[level][0][0]] # y,x
+        self.rgbColorBackup = self.rgb.colorSpace[self._stages[self.level][0][1], self._stages[self.level][0][0]] # y,x
 
     def checkForNextLevel(self):
-        self.setImage('_nextLevel')
-        time.sleep(0.5)
+        self.setImage()
         self.rgbNext = colorSpaces('rgb')
-        tempColor = self.rgbNext.colorSpace[self._stages[level][0][1], self._stages[level][0][0]] # y,x
+        tempColor = self.rgbNext.colorSpace[self._stages[self.level][0][1], self._stages[self.level][0][0]] # y,x
 
         print("temp1: ", self.rgbColorBackup, "   temp2: ", tempColor)
 
-        if not(self.rgbColorBackup[0] == tempColor[0] and
+        # all 3 equal then same level
+        if (self.rgbColorBackup[0] == tempColor[0] and
             self.rgbColorBackup[1] == tempColor[1] and
             self.rgbColorBackup[2] == tempColor[2]):
-            self.onNextLevel = True
+            return False
+        self.onNextLevel = True
+        return True
+            
 
     def popMax(self):
-        if self.onNextLevel:
-            return
         print()
         print(self.clickIndex)
-        print('rgb')
+        if self.debugging:
+            print(self.rgb.name)
         for i in range(len(self.rgb.data)):
             if self.rgb.data[i][2] == self.clickIndex:
-                print(self.rgb.data[i])
+                if self.debugging:
+                    print(self.rgb.data[i])
                 self.rgb.data.pop(i)
                 break
+        if self.debugging:
+            print(self.bgr.name)
         for i in range(len(self.bgr.data)):
             if self.bgr.data[i][2] == self.clickIndex:
-                print(self.bgr.data[i])
+                if self.debugging:
+                    print(self.bgr.data[i])
                 self.bgr.data.pop(i)
                 break
+        if self.debugging:
+            print(self.hsv.name)
         for i in range(len(self.hsv.data)):
             if self.hsv.data[i][2] == self.clickIndex:
-                print(self.hsv.data[i])
+                if self.debugging:
+                    print(self.hsv.data[i])
                 self.hsv.data.pop(i)
                 break
-        #TODO: reset singleMax var for all objects
-        #TODO: get singleVariance as priority instead of multiple...
         self.rgb.singleMaxVariance = 0
         self.rgb.multipleIndex = 0
+        self.rgb.singleIndex = 0
         self.bgr.singleMaxVariance = 0
         self.bgr.multipleIndex = 0
+        self.bgr.singleIndex = 0
         self.hsv.singleMaxVariance = 0
         self.hsv.multipleIndex = 0
-
-        # rgb single still picked 11?
-        # self.rgb.data
-        # go into rgb, bgr, and hsv objects data and pop data with matching index as click index
-        # then it will loop and recompute max
-        
-
+        self.hsv.singleIndex = 0
+        self.indexCounter = []
 
     def ClickMouse(self):
         mouse.move(self._stages[self.level][self.clickIndex][0] + self._mouseClickOffset[0], 
@@ -294,6 +308,9 @@ if __name__ == "__main__":
             level = int(sys.argv[2]) - 2
             cb = colorBlindAI(True, level, True)
             for i in range(len(cb._levelAmounts)):
+                print('---------------------')
+                print('level: ', i)
+                print('--------------------')
                 cb.nextLevel()
                 time.sleep(1)
         elif(sys.argv[1] == "p"):
@@ -306,7 +323,7 @@ if __name__ == "__main__":
         cb = colorBlindAI(True, 0, True)
         for i in range(500):
             cb.nextLevel()
-            time.sleep(1)
+            # time.sleep(1)
 
 
 

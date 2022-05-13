@@ -113,34 +113,38 @@ class colorBlindAI:
     def setIndexCounter(self, objectName):
         indexObjectM = 0
         indexObjectS = 0
+        singleVariance = 0
         ranOnceM = False
         ranOnceS = False
 
         if objectName == 'rgb':
             indexObjectM = self.rgb.multipleIndex
             indexObjectS = self.rgb.singleIndex
+            singleVariance = self.rgb.singleMaxVariance
         elif objectName == 'bgr':
             if self.bgr.isBlack:
                 return
             indexObjectM = self.bgr.multipleIndex
             indexObjectS = self.bgr.singleIndex
+            singleVariance = self.bgr.singleMaxVariance
         else:
             indexObjectM = self.hsv.multipleIndex
             indexObjectS = self.hsv.singleIndex
+            singleVariance = self.hsv.singleMaxVariance
         
         for i in range(len(self.indexCounter)):
             if indexObjectM == self.indexCounter[i][0]:
                 self.indexCounter[i][1] += 1
                 ranOnceM = True
         if not ranOnceM:
-            self.indexCounter.append([indexObjectM, 1, 'M'])
+            self.indexCounter.append([indexObjectM, 1, 'M', 0])
 
         for i in range(len(self.indexCounter)):
             if indexObjectS == self.indexCounter[i][0]:
                 self.indexCounter[i][1] += 1
                 ranOnceS = True
         if not ranOnceS:
-            self.indexCounter.append([indexObjectS, 1, 'S'])
+            self.indexCounter.append([indexObjectS, 1, 'S', singleVariance])
 
     def setMisMatchIndex(self, recurseLevel):
         print("index counter: ", self.indexCounter)
@@ -152,8 +156,7 @@ class colorBlindAI:
         max = 0
         single = False
         index = 0
-
-        #TODO: fix order of max for second run based off of single max variance
+        var = 0
 
         # first run
         if recurseLevel == self.onFirstRun:
@@ -166,10 +169,20 @@ class colorBlindAI:
                     else:
                         single = False
                 if self.indexCounter[i][1] == max:
+                    # If current is Multiple, prioritize Single
                     if single == False and self.indexCounter[i][2] == 'S':
                         max = self.indexCounter[i][1]
                         index = self.indexCounter[i][0]
+                        var = self.indexCounter[i][3]
                         single = True
+                    # if already single, compare single variances
+                    elif single == True:
+                        if self.indexCounter[i][3] > var:
+                            max = self.indexCounter[i][1]
+                            index = self.indexCounter[i][0]
+                            var = self.indexCounter[i][3]
+                            single = True
+
         else: # 2nd+ run only compare single index's
             print("---------------ran")
             for i in range(len(self.indexCounter)):

@@ -63,12 +63,10 @@ def findMismatch(px, level, ranges):
                 break
         
         if (foundDuplicate == False):
-            print("append: ", i)
             data.append([color1, False, i])
         else:
             foundDuplicate = False
     
-    print("with duplicated\n")
     if (len(data) >= 1):
         for i in range(len(data)):
             print(data[i])
@@ -83,13 +81,13 @@ def findMismatch(px, level, ranges):
         if (data[i][1] == True):
             data.pop(i)
 
-    print("\nafter pops\n")
 
     #computeSubVariance(data, i, baseColor)
-
+    print()
     if (len(data) > 0):
         for i in range(len(data)):
-            print(data[i])
+            pass
+            # print(data[i])
         
         # grab max variance here
         index = compareMaxVariance(px, data,level)

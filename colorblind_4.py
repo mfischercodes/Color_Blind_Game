@@ -21,7 +21,7 @@ def findMismatch(px, level, ranges):
 
     for i in range(ranges):
         color1 = getPixel(px, level[i][0], level[i][1])
-        print (i, " : " , color1)
+        print(i, " : ", color1)
         for x in range(len(data)):
             # if duplicate in array, set it to true
             if ((color1[0] < data[x][0][0] + var) and (color1[0] > data[x][0][0] - var) and 
@@ -32,12 +32,10 @@ def findMismatch(px, level, ranges):
                 break
         
         if (foundDuplicate == False):
-            print("append: ", i)
             data.append([color1, False, i])
         else:
             foundDuplicate = False
     
-    print("with duplicated\n")
     if (len(data) >= 1):
         for i in range(len(data)):
             print(data[i])
@@ -48,16 +46,14 @@ def findMismatch(px, level, ranges):
             if abs(data[i][0][2] - baseColor[2]) > backupValue:
                 backupIndex = data[i][2]
 
-
-    
+    print("\n")
     for i in range(len(data) - 1,-1, -1):
         if (data[i][1] == True):
             data.pop(i)
 
-    print("\nafter pops\n")
     if (len(data) > 0):
         for i in range(len(data)):
-            print(data[i])
+            pass
         
         pos = data[0][2]
         mouse.move(level[pos][0], level[pos][1])

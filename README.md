@@ -6,9 +6,8 @@ A python bot that will play Instagrams Color Blind Game for you.
 
 In the Color Blind Game you are given a number of different colored circles and you have to click the one that is different.
 
-![Easy Example photo of how to play](https://github.com/themichaelfischer/Color_Blind_Game/tree/main/Photos/_first.png?raw=true)
-![plot](https://github.com/themichaelfischer/Color_Blind_Game/tree/main/Photos/_first.png?raw=true)
-
+![Easy Example photo of how to play](https://github.com/themichaelfischer/Color_Blind_Game/tree/main/Photos/_first.png)
+![Easy Example photo of how to play jpg](https://github.com/themichaelfischer/Color_Blind_Game/tree/main/Photos/_first.jpg)
 
 
 

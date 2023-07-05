@@ -18,7 +18,7 @@ As the game progresses it gets increasing hard to decide which circle to pick
 
 The bot is able to look at the rgb values of each circle and compare them enabling it to be able to pick the correct circle
 
-![RGB Values for each circle](https://github.com/themichaelfischer/Color_Blind_Game/tree/main/Photos/match_freeze.png)
+![RGB Values for each circle](https://github.com/themichaelfischer/Color_Blind_Game/tree/main/Photos/math_freeze.png)
 
 With this knowledge the bot is able to pick the circle with the largest rgb variance and click the correct one most of the time.
 

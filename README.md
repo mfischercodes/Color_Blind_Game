@@ -7,7 +7,7 @@ A python bot that will play Instagrams Color Blind Game for you.
 
 Which is correct
 
-![alt text](https://github.com/themichaealfischer/Color_Blind_Game/tree/main/Photos/_first.png?raw=true)
+![alt text](https://github.com/themichaelfischer/Color_Blind_Game/tree/main/Photos/_first.png)
 
 
 

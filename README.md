@@ -2,9 +2,15 @@
 
 A python bot that will play Instagrams Color Blind Game for you.
 
+![color_blind_gif](https://github.com/themichaelfischer/Color_Blind_Game/assets/79065779/24ecea86-d2d3-421d-bdfb-15d32be18400)
+
+
 # How Color Blind Game Works
 
 In the Color Blind Game you are given a number of different colored circles and you have to click the one that is different.
+
+![color_blind_photo_1](https://github.com/themichaelfischer/Color_Blind_Game/assets/79065779/ba04727d-7a51-455b-8b3b-575cde9491bc)
+
 
 ![Easy Example photo of how to play](https://github.com/themichaelfischer/Color_Blind_Game/tree/main/Photos/_first.png)
 
